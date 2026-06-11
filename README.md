@@ -2,6 +2,19 @@
 
 A powerful command-line interface for Atlassian Confluence that allows you to read, search, and manage your Confluence content from the terminal.
 
+## Fork Status
+
+This repository is a fork of [`pchuri/confluence-cli`](https://github.com/pchuri/confluence-cli).
+The `server-6-auto-format` branch carries an unreleased compatibility fix for older self-hosted Confluence Server/Data Center instances.
+
+- Fork: [`a652/confluence-cli`](https://github.com/a652/confluence-cli)
+- Branch: `server-6-auto-format`
+- Package name and CLI command are unchanged: `confluence-cli` / `confluence`
+- Version in `package.json`: `2.11.2`
+- npm and Homebrew install commands still point to the upstream published package unless you install this fork explicitly.
+
+The fork has been tested against Confluence Server `6.12.1` for page creation, child-page creation, reading, updating, version listing, child listing, title lookup, and label creation through the raw API command.
+
 ## Features
 
 - 📖 **Read pages** - Get page content in text or HTML format
@@ -41,9 +54,37 @@ Or run directly with npx:
 npx confluence-cli
 ```
 
+### This fork
+
+The compatibility changes in this fork are not published to npm or Homebrew. Install the fork branch directly when you need the older Server/Data Center write-path fix:
+
+```bash
+npm install -g github:a652/confluence-cli#server-6-auto-format
+```
+
+Or install from a local clone:
+
+```bash
+git clone https://github.com/a652/confluence-cli.git
+cd confluence-cli
+git switch server-6-auto-format
+npm install
+npm install -g .
+```
+
+Confirm the installed CLI resolves to the forked checkout or GitHub package:
+
+```bash
+which confluence
+confluence --version
+npm list -g confluence-cli --depth=0
+```
+
 ## Claude Code Integration
 
 confluence-cli ships as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins). Once installed, Claude Code understands all confluence-cli commands automatically and receives updates when the skill is improved.
+
+The marketplace commands below install the upstream `pchuri/confluence-cli` plugin. They do not install this fork branch. To use the Server/Data Center compatibility changes in this fork, install the CLI from `a652/confluence-cli#server-6-auto-format` first, then use `confluence install-skill` if you want local Claude Code skill documentation.
 
 ### Option 1: Install as Plugin (recommended)
 
@@ -339,6 +380,45 @@ For **read-only** usage, select at minimum: `read:confluence-content.all`, `read
 
 **Reverse-proxy injected authentication:** For deployments where a local reverse proxy injects credentials on the wire (e.g. SPNEGO/Kerberos, mTLS terminated at the proxy edge, or header injection), set `authType=none`. In this mode the CLI sends no `Authorization` or `Cookie` header — authentication is entirely the proxy's responsibility. Point `CONFLUENCE_DOMAIN` at the proxy and ensure no credentials are configured on the CLI side.
 
+### Older Confluence Server/Data Center Writes
+
+Older Confluence Server releases can reject create or update requests when `body.storage.value` contains bare text instead of valid storage XHTML. In this fork, write commands default to `--format auto` so common inputs are normalized before they reach the REST API:
+
+- Plain text and Markdown are converted to Confluence storage XHTML.
+- Markup-like content that starts with `<`, such as `<p>...</p>` or `<ac:structured-macro ...>`, is preserved as native storage.
+- The behavior applies to `create`, `create-child`, `update`, and `comment`.
+
+Examples:
+
+```bash
+# Plain text becomes <p>Hello World!</p>
+confluence create-child "Meeting Notes" 151814847 --content "Hello World!"
+
+# Markdown becomes storage XHTML before upload
+confluence update 151814902 --content "## Updated by CLI"
+
+# Existing storage XHTML is sent as-is
+confluence create-child "Copied Page" 151814847 --file ./page-storage.xml
+```
+
+Use an explicit format when you want strict behavior:
+
+```bash
+confluence create "Raw Storage Page" TIAS --file ./page-storage.xml --format storage
+confluence create "Markdown Page" TIAS --file ./page.md --format markdown
+confluence create "HTML Page" TIAS --file ./page.html --format html
+```
+
+Validation performed on Confluence Server `6.12.1`:
+
+- Create a child page from plain text.
+- Copy a larger storage page and verify the read-back storage is byte-identical.
+- Update title and content, then verify the page version increments.
+- Read the result as `storage`, `markdown`, and `text`.
+- List child pages, find by title, list versions, and add labels through `confluence api content/<pageId>/label`.
+
+If a write request still fails, the CLI prints the Confluence API response body after the Axios error message. Use that response to distinguish storage-format errors from permission, authentication, or endpoint-path problems.
+
 ## Usage
 
 ### Read a Page
@@ -569,8 +649,7 @@ confluence create "Documentation" SPACEKEY --file ./content.md
 confluence create "Raw Storage Page" SPACEKEY --file ./content.xml --format storage
 ```
 
-For create, create-child, update, and comment, `--format auto` is the default.
-It preserves content that starts with markup such as `<p>...</p>` or `<ac:structured-macro ...>`, and converts plain text or Markdown to Confluence storage XHTML. This is useful for older Confluence Server/Data Center versions that reject bare text in a `body.storage.value`.
+For create, create-child, update, and comment, `--format auto` is the default. See [Older Confluence Server/Data Center Writes](#older-confluence-serverdata-center-writes) for the exact detection rules and Server `6.12.1` validation notes.
 
 ### Create a Child Page
 ```bash
@@ -935,9 +1014,10 @@ This works under all three `linkStyle` modes (`smart`, `wiki`, `plain`) — the 
 ## Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/pchuri/confluence-cli.git
+# Clone this fork
+git clone https://github.com/a652/confluence-cli.git
 cd confluence-cli
+git switch server-6-auto-format
 
 # Install dependencies
 npm install
@@ -977,9 +1057,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support & Feedback
 
-### 💬 We'd love to hear from you!
+### For this fork
 
-Your feedback helps make confluence-cli better for everyone. Here's how you can share your thoughts:
+Use the fork issue tracker for feedback about the `server-6-auto-format` branch or older Confluence Server/Data Center compatibility:
+
+- Fork issues: <https://github.com/a652/confluence-cli/issues>
+- Fork pull requests: <https://github.com/a652/confluence-cli/pulls>
+
+When reporting Server/Data Center write failures, include:
+
+- Confluence version and deployment type.
+- `CONFLUENCE_API_PATH` value, with host and credentials removed.
+- The command you ran, with page IDs and tokens redacted as needed.
+- The `API response:` block printed by the CLI.
+
+### Upstream project
+
+For general confluence-cli bugs, feature requests, and releases, use the upstream project:
 
 #### 🐛 Found a bug?
 1. Check the [Issues](https://github.com/pchuri/confluence-cli/issues) page
