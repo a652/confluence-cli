@@ -559,12 +559,18 @@ confluence find "Project Documentation" --space MYTEAM
 
 ### Create a New Page
 ```bash
-# Create with inline content and markdown format
-confluence create "My New Page" SPACEKEY --content "**Hello** World!" --format markdown
+# Create with inline text or markdown (default --format auto)
+confluence create "My New Page" SPACEKEY --content "**Hello** World!"
 
 # Create from a file
-confluence create "Documentation" SPACEKEY --file ./content.md --format markdown
+confluence create "Documentation" SPACEKEY --file ./content.md
+
+# Force native Confluence storage when the input is already storage XHTML
+confluence create "Raw Storage Page" SPACEKEY --file ./content.xml --format storage
 ```
+
+For create, create-child, update, and comment, `--format auto` is the default.
+It preserves content that starts with markup such as `<p>...</p>` or `<ac:structured-macro ...>`, and converts plain text or Markdown to Confluence storage XHTML. This is useful for older Confluence Server/Data Center versions that reject bare text in a `body.storage.value`.
 
 ### Create a Child Page
 ```bash
@@ -613,7 +619,7 @@ confluence update 123456789 --title "A Newer Title for the Page"
 confluence update 123456789 --content "Updated page content."
 
 # Update content from a file
-confluence update 123456789 --file ./updated-content.md --format markdown
+confluence update 123456789 --file ./updated-content.md
 
 # Update both title and content
 confluence update 123456789 --title "New Title" --content "And new content"
@@ -772,10 +778,10 @@ confluence stats
 | `spaces` | List available spaces | `--limit <number>`, `--all` |
 | `find <title>` | Find a page by its title | `--space <spaceKey>` |
 | `children <pageId>` | List child pages of a page | `--recursive`, `--max-depth <number>`, `--format <list\|tree\|json>`, `--show-url`, `--show-id` |
-| `create <title> <spaceKey>` | Create a new page or folder | `--content <string>`, `--file <path>`, `--format <storage\|html\|markdown>`, `--type <page\|folder>` |
-| `create-child <title> <parentId>` | Create a child page or folder | `--content <string>`, `--file <path>`, `--format <storage\|html\|markdown>`, `--type <page\|folder>` |
+| `create <title> <spaceKey>` | Create a new page or folder | `--content <string>`, `--file <path>`, `--format <auto\|storage\|html\|markdown>`, `--type <page\|folder>` |
+| `create-child <title> <parentId>` | Create a child page or folder | `--content <string>`, `--file <path>`, `--format <auto\|storage\|html\|markdown>`, `--type <page\|folder>` |
 | `copy-tree <sourcePageId> <targetParentId> [newTitle]` | Copy page tree with all children | `--max-depth <number>`, `--exclude <patterns>`, `--delay-ms <ms>`, `--copy-suffix <text>`, `--dry-run`, `--fail-on-error`, `--quiet` |
-| `update <pageId>` | Update a page's title or content | `--title <string>`, `--content <string>`, `--file <path>`, `--format <storage\|html\|markdown>` |
+| `update <pageId>` | Update a page's title or content | `--title <string>`, `--content <string>`, `--file <path>`, `--format <auto\|storage\|html\|markdown>` |
 | `move <pageId_or_url> <newParentId_or_url>` | Move a page to a new parent location | `--title <string>` |
 | `delete <pageId_or_url>` | Delete a page by ID or URL | `--yes` |
 | `versions <pageId_or_url>` | List historical versions of a page | `--format <text\|json>` |
@@ -786,7 +792,7 @@ confluence stats
 | `attachment-upload <pageId_or_url>` | Upload attachments to a page | `--file <path>`, `--comment <text>`, `--replace`, `--minor-edit` |
 | `attachment-delete <pageId_or_url> <attachmentId>` | Delete an attachment from a page | `--yes` |
 | `comments <pageId_or_url>` | List comments for a page | `--format <text\|markdown\|json>`, `--limit <number>`, `--start <number>`, `--location <inline\|footer\|resolved>`, `--depth <root\|all>`, `--all` |
-| `comment <pageId_or_url>` | Create a comment on a page | `--content <string>`, `--file <path>`, `--format <storage\|html\|markdown>`, `--parent <commentId>`, `--location <inline\|footer>`, `--inline-selection <text>`, `--inline-original-selection <text>`, `--inline-marker-ref <ref>`, `--inline-properties <json>` |
+| `comment <pageId_or_url>` | Create a comment on a page | `--content <string>`, `--file <path>`, `--format <auto\|storage\|html\|markdown>`, `--parent <commentId>`, `--location <inline\|footer>`, `--inline-selection <text>`, `--inline-original-selection <text>`, `--inline-marker-ref <ref>`, `--inline-properties <json>` |
 | `comment-delete <commentId>` | Delete a comment by ID | `--yes` |
 | `property-list <pageId_or_url>` | List all content properties for a page | `--format <text\|json>`, `--limit <number>`, `--start <number>`, `--all` |
 | `property-get <pageId_or_url> <key>` | Get a content property by key | `--format <text\|json>` |
